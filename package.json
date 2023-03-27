@@ -1,0 +1,21 @@
+{
+  "name": "generator-practice",
+  "version": "1.0.0",
+  "description": "",
+  "source": "src/index.html",
+  "browserslist": "> 0.5%, last 2 versions, not dead",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@parcel/transformer-sass": "2.8.3",
+    "@types/geojson": "^7946.0.10",
+    "parcel": "^2.8.3"
+  },
+  "dependencies": {
+    "typescript": "^5.0.2"
+  }
+}

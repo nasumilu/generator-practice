@@ -13,7 +13,7 @@ export enum WellKnownTextToken {
 
 export class WellKnowTextLexer extends AbstractLexer<WellKnownTextToken> {
 
-    private static geometryTypes = ['point', 'linestring', 'polygon', 'multipoint', 'multilinestring', 'multipolygon'];
+    private static geometryTypes = ['point', 'linestring'];
 
     public constructor(caseInsensitive?: boolean) {
         super(caseInsensitive);
@@ -57,8 +57,12 @@ export class WellKnownTextParser extends AbstractParser<WellKnownTextToken, Geom
         super(new WellKnowTextLexer());
     }
 
+    protected initOut(): Geometry {
+        return {'type': undefined, coordinates: []} as Geometry;
+    }
+
     @parse<WellKnownTextToken, Geometry>(WellKnownTextToken.GEOMETRY)
-    parseGeometry(token: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken {
+    parseGeometry(token: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken[] {
         const type = (token.value as string).toLowerCase();
         switch (type) {
             case 'point':
@@ -68,61 +72,57 @@ export class WellKnownTextParser extends AbstractParser<WellKnownTextToken, Geom
                 out.type = 'LineString';
                 break;
         }
-        return WellKnownTextToken.LPAREN;
+        return [WellKnownTextToken.LPAREN];
     }
 
     @parse<WellKnownTextToken, Geometry>(WellKnownTextToken.NUMERIC)
-    parseNumeric(token: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken|WellKnownTextToken[] {
+    parseNumeric(token: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken[] {
         switch (out.type) {
             case 'Point':
                 out.coordinates.push(token.value);
-                return out.coordinates.length === 2 ? WellKnownTextToken.RPAREN : WellKnownTextToken.NUMERIC;
+                return out.coordinates.length === 2 ? [WellKnownTextToken.RPAREN] : [WellKnownTextToken.NUMERIC];
             case 'LineString':
                 out.coordinates[out.coordinates.length - 1].push(token.value);
-                return out.coordinates[out.coordinates.length - 1].length === 2 ? [WellKnownTextToken.RPAREN, WellKnownTextToken.COMMA] : WellKnownTextToken.NUMERIC;
+                return out.coordinates[out.coordinates.length - 1].length === 2 ? [WellKnownTextToken.RPAREN, WellKnownTextToken.COMMA] : [WellKnownTextToken.NUMERIC];
         }
     }
 
     @parse<WellKnownTextToken, Geometry>(WellKnownTextToken.LPAREN)
-    parseLeftParenthesis(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry) {
+    parseLeftParenthesis(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken[] {
         switch(out.type) {
             case 'Point':
-                out.coordinates = [];
-                return WellKnownTextToken.NUMERIC;
+                return [WellKnownTextToken.NUMERIC];
             case 'LineString':
-                if (!out.coordinates) {
-                    out.coordinates = [];
-                }
-                if (lookahead.type === WellKnownTextToken.NUMERIC) {
+                if (lookahead?.type === WellKnownTextToken.NUMERIC) {
                     out.coordinates.push([]);
-                    return WellKnownTextToken.NUMERIC;
+                    return [WellKnownTextToken.NUMERIC];
                 }
-                return WellKnownTextToken.LPAREN;
+                return [WellKnownTextToken.LPAREN];
         }
     }
 
     @parse<WellKnownTextToken, Geometry>(WellKnownTextToken.RPAREN)
-    parseRightParenthesis(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken | null {
+    parseRightParenthesis(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken[] {
 
         switch(out.type) {
             case 'Point':
                 return null;
             case 'LineString':
-                return lookahead.type === WellKnownTextToken.COMMA ? WellKnownTextToken.COMMA : null;
+                return lookahead?.type === WellKnownTextToken.COMMA ? [WellKnownTextToken.COMMA] : [null];
         }
     }
 
     @parse<WellKnownTextToken, Geometry>(WellKnownTextToken.COMMA)
-    parseComma(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken  {
+    parseComma(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>, out: Geometry): WellKnownTextToken[]  {
         switch(out.type) {
             case 'Point':
                 return null;
             case 'LineString':
-                if (lookahead.type === WellKnownTextToken.NUMERIC) {
+                if (lookahead?.type === WellKnownTextToken.NUMERIC) {
                     out.coordinates.push([]);
-                    return WellKnownTextToken.NUMERIC
+                    return [WellKnownTextToken.NUMERIC]
                 }
-                return WellKnownTextToken.LPAREN;
+                return [WellKnownTextToken.LPAREN];
         }
 
     }

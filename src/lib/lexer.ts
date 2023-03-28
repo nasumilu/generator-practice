@@ -35,14 +35,6 @@ export class Token<T> {
 
 }
 
-function isAToken(value: any): value is Token<any> {
-    return typeof value === 'object'
-        && Object.hasOwn(value, 'type')
-        && Object.hasOwn(value, 'value')
-        && Object.hasOwn(value, 'position')
-        && Object.hasOwn(value, 'input');
-}
-
 /**
  * Base error for a syntax error.
  *
@@ -54,12 +46,12 @@ export class SyntaxError extends Error {
         const args = SyntaxError._normalizeArg(value);
         super(`Syntax Error: 
             Unknown value '${args.value}' at position ${args.start}!
-            '${args.input.slice(0, args.start)}**⇝'${args.input.slice(args.start, args.end + 1)}'⇜**${args.input.slice(args.end | 1)})'
+            '${args.input.slice(0, args.start)}˰${args.input.slice(args.start, args.end)}${args.input.slice(args.end)}'
         `);
     }
 
     private static _normalizeArg(value: PositionRegExpExecArray | Token<any>): {value: string, start: number, end: number, input: string} {
-        if (isAToken(value)) {
+        if (value instanceof Token) {
             return {value: value.value, start: value.startPosition, end: value.endPosition, input: value.input};
         }
         return {value: value[0], start:  value.indices[0][0], end: value.indices[0][1], input: value.input};
@@ -73,11 +65,11 @@ export class SyntaxError extends Error {
  */
 export abstract class AbstractLexer<T> {
 
-    private _regex;
-    private _input: string;
-    private _scanner: Generator<Token<T>, boolean, string>;
-    private _current: IteratorResult<Token<T>>
-    private _lookahead: IteratorResult<Token<T>>;
+    #regex: RegExp;
+    #input: string;
+    #scanner: Generator<Token<T>, boolean, string>;
+    #current: IteratorResult<Token<T>>
+    #lookahead: IteratorResult<Token<T>>;
 
     /**
      * Constructs a lexer from a valid {@link RegExp} pattern
@@ -90,38 +82,41 @@ export abstract class AbstractLexer<T> {
             flags += 'i';
         }
         const pattern = `(${this.catchablePatterns().join(')|(')})`;
-        this._regex = new RegExp(pattern, flags);
+        this.#regex = new RegExp(pattern, flags);
     }
 
     set input(input: string) {
-        this._input = input;
         this.reset();
+        this.#input = input;
+        this.#scanner = this.scanner(this.#input);
+        this.#current = this.#scanner.next(this.#input as any);
+        this.#lookahead = this.#scanner.next(this.#input as any);
     }
 
     next(): Token<T> {
         let current: Token<T>;
-        if (!this._current.done) {
-            current = this._current.value;
-            this._current = this._lookahead;
-            this._lookahead = this._scanner.next(this._input as any);
+        if (!this.#current.done) {
+            current = this.#current.value;
+            this.#current = this.#lookahead;
+            this.#lookahead = this.#scanner.next(this.#input as any);
         }
         return current;
     }
 
     get current(): Token<T> {
-        return this._current.value;
+        return this.#current.value;
     }
 
     get lookahead(): Token<T> {
-        return this._lookahead.value;
+        return this.#lookahead.value;
     }
 
     hasNext(): boolean {
-        return !this._current.done;
+        return !this.#current.done;
     }
 
     isNextA(type: T): boolean {
-        return !this._lookahead.done && this._lookahead.value.type === type;
+        return (!this.#lookahead.done && this.#lookahead.value.type === type) || (this.#lookahead.done && null === type);
     }
 
     isNextAny(...types: T[]): boolean {
@@ -129,23 +124,19 @@ export abstract class AbstractLexer<T> {
     }
 
     reset(): void {
-        this._scanner = null;
-        this._current = null;
-        this._lookahead = null;
-        this._scanner = this.scanner(this._input);
-
-        this._current = this._scanner.next(this._input as any);
-        this._lookahead = this._scanner.next(this._input as any);
+        this.#scanner = null;
+        this.#current = null;
+        this.#lookahead = null;
     }
 
 
-    private * scanner(input: string): Generator<Token<T>, boolean, string> {
-        let current: PositionRegExpExecArray = this._regex.exec(input);
+    private * scanner(input: string): Generator<Token<T>, null, string> {
+        let current: PositionRegExpExecArray = this.#regex.exec(input) as PositionRegExpExecArray;
         while (current != null) {
             yield this.createToken(current);
-            current = this._regex.exec(input);
+            current = this.#regex.exec(input) as PositionRegExpExecArray;
         }
-        return true;
+        return null;
     }
 
     protected abstract catchablePatterns(): string[];

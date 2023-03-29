@@ -1,13 +1,12 @@
-import {WellKnownTextParser} from "./wtk";
-import {MoleculeParser} from "./molecule";
+// import {WellKnownTextParser} from "./wtk";
 
-let input = 'LINESTRING(-85.2116 29.4555, -86.15544 24.45544, -89.1244 45.5444)';
-const parser = new WellKnownTextParser();
+// let input = 'LINESTRING(-85.2116 29.4555, -86.15544 24.45544, -89.1244 45.5444)';
+// const parser = new WellKnownTextParser();
 
-console.log(parser.parse(input));
+// console.log(parser.parse(input));
 
-const molecule = 'C6H12O';
+import {parse_molecule} from "./molecule";
 
-const moleculeParser = new MoleculeParser();
+const molecule = 'CaO';
 
-console.log(moleculeParser.parse(molecule));
+console.log(parse_molecule(molecule));

@@ -9,7 +9,7 @@ export interface PositionRegExpExecArray extends RegExpExecArray {
 }
 
 /**
- * Token class binds a `type` to a value.
+ * Token class wraps a `type` to a value and includes its start & end positions.
  */
 export class Token<T> {
 
@@ -42,14 +42,24 @@ export class Token<T> {
  * parse ensures that the values correctly ordered.
  */
 export class SyntaxError extends Error {
-    constructor(value: PositionRegExpExecArray | Token<any>) {
-        const args = SyntaxError._normalizeArg(value);
-        super(`Syntax Error: 
-            Unknown value '${args.value}' at position ${args.start}!
-            '${args.input.slice(0, args.start)}˰${args.input.slice(args.start, args.end)}${args.input.slice(args.end)}'
-        `);
+    constructor(value: PositionRegExpExecArray | Token<any> | string) {
+        if (typeof value !== 'string') {
+            const args = SyntaxError._normalizeArg(value);
+            value = `
+            (!) Syntax Error: 
+                Unknown value '${args.value}' at position ${args.start}!
+                '${args.input.slice(0, args.start)}˰${args.input.slice(args.start, args.end)}${args.input.slice(args.end)}'
+            `;
+        }
+        super(value);
     }
 
+    /**
+     * static utility method used to normalize the {@link Token} or {@link PositionRegExpExecArray} argument into an
+     * object which can construct the message for an {@link SyntaxError}
+     * @param value
+     * @private
+     */
     private static _normalizeArg(value: PositionRegExpExecArray | Token<any>): {value: string, start: number, end: number, input: string} {
         if (value instanceof Token) {
             return {value: value.value, start: value.startPosition, end: value.endPosition, input: value.input};
@@ -85,6 +95,11 @@ export abstract class AbstractLexer<T> {
         this.#regex = new RegExp(pattern, flags);
     }
 
+    /**
+     * Resets and sets the input to lex.
+     *
+     * @param input
+     */
     set input(input: string) {
         this.reset();
         this.#input = input;
@@ -93,6 +108,9 @@ export abstract class AbstractLexer<T> {
         this.#lookahead = this.#scanner.next(this.#input as any);
     }
 
+    /**
+     * Move the lexer to the next token
+     */
     next(): Token<T> {
         let current: Token<T>;
         if (!this.#current.done) {
@@ -103,33 +121,57 @@ export abstract class AbstractLexer<T> {
         return current;
     }
 
+    /**
+     * Get the current token
+     */
     get current(): Token<T> {
         return this.#current.value;
     }
 
+    /**
+     * Get the lookahead token. Lookahead is the token at one-position to the right of the current or null if no more
+     * tokens are available.
+     */
     get lookahead(): Token<T> {
         return this.#lookahead.value;
     }
 
+    /**
+     * Indicates whether the lexer has a next token.
+     */
     hasNext(): boolean {
         return !this.#current.done;
     }
 
+    /**
+     * Predicate to test if the next token is a specific type.
+     * @param type
+     */
     isNextA(type: T): boolean {
         return (!this.#lookahead.done && this.#lookahead.value.type === type) || (this.#lookahead.done && null === type);
     }
 
+    /**
+     * Predicate to test if the next token is any of the types.
+     * @param types
+     */
     isNextAny(...types: T[]): boolean {
-        return types.some(type => this.isNextA(type));
+        return types.some(this.isNextA.bind(this));
     }
 
-    reset(): void {
+    /**
+     * Resets the lexer
+     */
+    protected reset(): void {
         this.#scanner = null;
         this.#current = null;
         this.#lookahead = null;
     }
 
-
+    /**
+     * The scanner {@link Generator} function which iterates over the tokens
+     * @private
+     */
     private * scanner(input: string): Generator<Token<T>, null, string> {
         let current: PositionRegExpExecArray = this.#regex.exec(input) as PositionRegExpExecArray;
         while (current != null) {
@@ -139,8 +181,16 @@ export abstract class AbstractLexer<T> {
         return null;
     }
 
+    /**
+     * An array of regex patterns used to construct the lexer
+     * @protected
+     */
     protected abstract catchablePatterns(): string[];
 
-    protected abstract createToken(value: RegExpExecArray);
+    /**
+     * Used to create a {@link Token} for the specified position value.
+     * @protected
+     */
+    protected abstract createToken(value: PositionRegExpExecArray);
 }
 

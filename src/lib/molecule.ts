@@ -1,14 +1,13 @@
 import {AbstractLexer, PositionRegExpExecArray, SyntaxError, Token} from "./lexer";
 import {AbstractParser, parse} from "./parser";
 
-export type Molecule = {[element: string]: number};
+type Molecule = {[element: string]: number};
 
-export enum MoleculeToken {
+enum MoleculeToken {
     ELEMENT = 1,
     NUMERIC = 2
 }
-
-export class MoleculeLexer extends AbstractLexer<MoleculeToken> {
+class MoleculeLexer extends AbstractLexer<MoleculeToken> {
 
     public constructor() {
         super(false);
@@ -36,14 +35,17 @@ export class MoleculeLexer extends AbstractLexer<MoleculeToken> {
 
 }
 
-export class MoleculeParser extends AbstractParser<MoleculeToken, Molecule> {
+class MoleculeParser extends AbstractParser<MoleculeToken, Molecule> {
+
+    #molecule: Molecule;
 
     constructor() {
         super(new MoleculeLexer());
     }
 
-    protected initOut(): Molecule {
-        return {};
+    parse(input: string, context?: any): Molecule {
+        this.#molecule = {};
+        return super.parse(input, context);
     }
 
     @parse(MoleculeToken.NUMERIC)
@@ -52,15 +54,30 @@ export class MoleculeParser extends AbstractParser<MoleculeToken, Molecule> {
     }
 
     @parse(MoleculeToken.ELEMENT)
-    parseElement(value: Token<MoleculeToken>, lookahead: Token<MoleculeToken>, out: Molecule): MoleculeToken[] {
-        if (!out[value.value]) {
-            out[value.value] = NaN;
+    parseElement(value: Token<MoleculeToken>, lookahead: Token<MoleculeToken>): MoleculeToken[] {
+        if (!this.#molecule[value.value]) {
+            this.#molecule[value.value] = NaN;
         }
         if (lookahead?.type === MoleculeToken.NUMERIC) {
-            out[value.value] = lookahead.value;
+            this.#molecule[value.value] = lookahead.value;
         } else {
-            out[value.value] = 1;
+            this.#molecule[value.value] = 1;
         }
         return [MoleculeToken.ELEMENT, MoleculeToken.NUMERIC, null];
     }
+
+    protected output(): Molecule {
+        return this.#molecule;
+    }
+}
+
+// A Highlander const, there can be only one!
+const MOLECULE_PARSER = new MoleculeParser();
+
+/**
+ * Parse a molecule into a {@link Molecule} type.
+ * @param value
+ */
+export function parse_molecule(value: string) : Molecule {
+    return MOLECULE_PARSER.parse(value);
 }

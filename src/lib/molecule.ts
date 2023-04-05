@@ -56,14 +56,15 @@ class MoleculeParser extends AbstractParser<MoleculeToken, Molecule> {
     @parse(MoleculeToken.ELEMENT)
     parseElement(value: Token<MoleculeToken>, lookahead: Token<MoleculeToken>): MoleculeToken[] {
         if (!this.#molecule[value.value]) {
-            this.#molecule[value.value] = NaN;
+            this.#molecule[value.value] = 0;
         }
         if (lookahead?.type === MoleculeToken.NUMERIC) {
             this.#molecule[value.value] = lookahead.value;
+            return [MoleculeToken.NUMERIC];
         } else {
-            this.#molecule[value.value] = 1;
+            this.#molecule[value.value] += 1;
+            return [MoleculeToken.ELEMENT, null];
         }
-        return [MoleculeToken.ELEMENT, MoleculeToken.NUMERIC, null];
     }
 
     protected output(): Molecule {

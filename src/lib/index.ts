@@ -7,12 +7,18 @@
 // console.log(parser.parse(input));
 
 import {parse_molecule} from "./molecule";
+import {parse_wkt} from "./wtk"
 
 document.querySelectorAll('button[data-target]').forEach((element: HTMLElement) => {
     element.addEventListener('click', () => {
         const target = element.dataset.target;
         const input = element.dataset.input;
-        const result = parse_molecule((document.getElementById(input) as HTMLInputElement).value);
+        let result: any = {};
+        if (input === 'wkt') {
+            result = parse_wkt((<HTMLInputElement>document.getElementById(input)).value);
+        } else if (input ==='molecule') {
+            result = parse_molecule((<HTMLInputElement>document.getElementById(input)).value);
+        }
         (document.getElementById(target) as HTMLTextAreaElement).value = JSON.stringify(result, null, 4);
     });
 });

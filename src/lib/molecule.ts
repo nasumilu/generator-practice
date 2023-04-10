@@ -14,7 +14,7 @@ class MoleculeLexer extends AbstractLexer<MoleculeToken> {
     }
 
     protected catchablePatterns(): string[] {
-        return ['([A-Z]{1}([a-z]{1})?)', '\\d+', '\\S'];
+        return ['[A-Z]{1}([a-z])?'];
     }
 
     protected createToken(value: PositionRegExpExecArray) {
@@ -48,12 +48,12 @@ class MoleculeParser extends AbstractParser<MoleculeToken, Molecule> {
         return super.parse(input, context);
     }
 
-    @parse(MoleculeToken.NUMERIC)
+    @parse((molecule, token) => token.type === MoleculeToken.NUMERIC)
     parseNumber(): MoleculeToken[] {
         return [MoleculeToken.ELEMENT, null];
     }
 
-    @parse(MoleculeToken.ELEMENT)
+    @parse((molecule, token) => token.type === MoleculeToken.ELEMENT)
     parseElement(value: Token<MoleculeToken>, lookahead: Token<MoleculeToken>): MoleculeToken[] {
         if (!this.#molecule[value.value]) {
             this.#molecule[value.value] = 0;

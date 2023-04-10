@@ -163,6 +163,7 @@ export abstract class AbstractLexer<T> {
      * Resets the lexer
      */
     protected reset(): void {
+        this.#regex.lastIndex = 0;
         this.#scanner = null;
         this.#current = null;
         this.#lookahead = null;

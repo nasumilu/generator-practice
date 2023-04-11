@@ -116,3 +116,18 @@ Expected output:
 ### Parsing Explained
 The `@parse` is a decorated which provides a predicate for which it is responsible for parsing a specific token. These
 are the lexical rules, which defined the path which the parsing generator function will invoke. Still lots of work....
+
+
+### Build the examples
+
+To keep things simple the bundled example uses [Parcel](https://parceljs.org/) an about as simple as it gets JS/TS build
+tool. And [yarn](https://yarnpkg.com/) package manager. 
+
+To star the development server....
+
+```shell
+$ git clone https://github.com/nasumilu/generator-practice.git
+$ cd generator-practice
+$ yarn install
+$ yarn start
+```

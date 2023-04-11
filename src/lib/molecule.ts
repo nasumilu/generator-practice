@@ -14,7 +14,7 @@ class MoleculeLexer extends AbstractLexer<MoleculeToken> {
     }
 
     protected catchablePatterns(): string[] {
-        return ['[A-Z]{1}([a-z])?'];
+        return ['[A-Z]{1}([a-z])?', '\\d+', '\\S'];
     }
 
     protected createToken(value: PositionRegExpExecArray) {
@@ -25,6 +25,7 @@ class MoleculeLexer extends AbstractLexer<MoleculeToken> {
         if (!Number.isNaN(numericValue)) {
             return new Token<MoleculeToken>(MoleculeToken.NUMERIC, numericValue, position, value.input);
         }
+
         if ((value[0].length === 1 && value[0] === value[0].toUpperCase())
             || (value[0].length === 2 && value[0].charAt(0) === value[0].charAt(0).toUpperCase() && value[0].charAt(1) === value[0].charAt(1).toLowerCase())) {
             return new Token<MoleculeToken>(MoleculeToken.ELEMENT, value[0], position, value.input);

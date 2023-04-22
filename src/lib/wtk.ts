@@ -1,5 +1,5 @@
 import {AbstractLexer, PositionRegExpExecArray, SyntaxError, Token} from "./lexer";
-import {Geometry, LineString, Point} from "geojson";
+import {Geometry, LineString, Point, Polygon} from "geojson";
 import {AbstractParser, parse} from "./parser";
 
 enum WellKnownTextToken {
@@ -13,7 +13,7 @@ enum WellKnownTextToken {
 
 class WellKnowTextLexer extends AbstractLexer<WellKnownTextToken> {
 
-    private static geometryTypes = ['point', 'linestring'];
+    private static geometryTypes = ['point', 'linestring', 'polygon'];
 
     public constructor(caseInsensitive?: boolean) {
         super(caseInsensitive);
@@ -68,7 +68,7 @@ class WellKnownTextParser extends AbstractParser<WellKnownTextToken, Geometry>{
         return super.parse(input, this.geometry);
     }
 
-    // Point
+    // -------------------- Start Point Rules -------------------------------- //
     @parse<WellKnownTextToken, Point>(
         (geometry, token) => token.type === WellKnownTextToken.GEOMETRY
             && (token.value as string).toLowerCase() === 'point'
@@ -103,9 +103,10 @@ class WellKnownTextParser extends AbstractParser<WellKnownTextToken, Geometry>{
     parsePointRightParenthesis(): WellKnownTextToken[] {
         return [null];
     }
+    // --------------------- End Point Rules --------------------------------- //
 
 
-    // LineString
+    // ----------------- Start LineString Rules ------------------------------ //
     @parse<WellKnownTextToken, LineString>(
         (geometry, token) => token.type === WellKnownTextToken.GEOMETRY
             && (token.value as string).toLowerCase() === 'linestring'
@@ -160,6 +161,10 @@ class WellKnownTextParser extends AbstractParser<WellKnownTextToken, Geometry>{
             return [WellKnownTextToken.COMMA];
         }
 
+        if (lookahead?.type === WellKnownTextToken.RPAREN) {
+            return [WellKnownTextToken.RPAREN];
+        }
+
         if ((this.geometry as LineString).coordinates.length !== 2) {
             // missing a ordinate value, syntax error
             throw new SyntaxError(value);
@@ -167,7 +172,70 @@ class WellKnownTextParser extends AbstractParser<WellKnownTextToken, Geometry>{
         // otherwise comma next ordered pair otherwise end of linestring.
         return [null];
     }
+    // ------------------ End LineString Rules ------------------------------ //
 
+    // ------------------ Start Polygon Rules ------------------------------- //
+    @parse<WellKnownTextToken, Polygon>(
+        (geometry, token) => token.type === WellKnownTextToken.GEOMETRY
+            && (token.value as string).toLowerCase() === 'polygon'
+    )
+    parsePolygon(): WellKnownTextToken[] {
+        this.geometry.type = 'Polygon';
+        (this.geometry as Polygon).coordinates = [];
+        return [WellKnownTextToken.LPAREN];
+    }
+
+    @parse<WellKnownTextToken, Polygon>(
+        (geometry, type) => type.type === WellKnownTextToken.LPAREN
+            && geometry?.type === 'Polygon'
+    )
+    parsePolygonLeftParenthesis(token: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>): WellKnownTextToken[] {
+        if (lookahead?.type === WellKnownTextToken.NUMERIC) {
+            (this.geometry as Polygon).coordinates.push([]);
+            return [WellKnownTextToken.NUMERIC];
+        }
+        return [WellKnownTextToken.LPAREN];
+    }
+
+    @parse<WellKnownTextToken, Polygon>(
+        (geometry, token) => token.type === WellKnownTextToken.NUMERIC
+            && geometry?.type === 'Polygon'
+    )
+    parsePolygonNumeric(token: Token<WellKnownTextToken>) {
+        (this.geometry as Polygon).coordinates[(this.geometry as Polygon).coordinates.length - 1].push(token.value);
+        return (this.geometry as Polygon).coordinates[(this.geometry as Polygon).coordinates.length - 1].length === 2
+            ? [WellKnownTextToken.RPAREN, WellKnownTextToken.COMMA]
+            : [WellKnownTextToken.NUMERIC];
+    }
+
+    @parse<WellKnownTextToken, Polygon>(
+        (geometry, token) => token.type === WellKnownTextToken.COMMA
+            && geometry?.type === 'Polygon'
+    )
+    parsePolygonComma(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>): WellKnownTextToken[]  {
+        if (lookahead?.type === WellKnownTextToken.NUMERIC) {
+            (this.geometry as Polygon).coordinates.push([]);
+            return [WellKnownTextToken.NUMERIC]
+        }
+        return [WellKnownTextToken.LPAREN];
+    }
+
+    @parse<WellKnownTextToken, Polygon>(
+        (geometry, token) => token.type === WellKnownTextToken.RPAREN
+            && geometry.type === 'Polygon'
+    )
+    parsePolygonRightParenthesis(value: Token<WellKnownTextToken>, lookahead: Token<WellKnownTextToken>): WellKnownTextToken[] {
+        if (lookahead?.type === WellKnownTextToken.COMMA) {
+            return [WellKnownTextToken.COMMA];
+        }
+
+        if (lookahead?.type === WellKnownTextToken.RPAREN) {
+            return [WellKnownTextToken.RPAREN];
+        }
+        return [null];
+    }
+
+    // ------------------- End Polygon Rules -------------------------------- //
 }
 
 // A Highlander const, there can be only one!
